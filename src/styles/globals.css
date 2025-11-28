@@ -1,0 +1,396 @@
+@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@300;400;500;600;700&family=Exo+2:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* ===== ELMO THEME - CS2 TRADING HUB ===== */
+  
+  /* Primary Colors (CS Orange) */
+  --elmo-primary: #FF6A00;
+  --elmo-primary-bright: #FF8533;
+  --elmo-primary-dim: #CC5500;
+  --elmo-on-primary: #FFFFFF;
+  
+  /* Secondary Colors (Electric Blue) */
+  --elmo-secondary: #00D9FF;
+  --elmo-secondary-bright: #33E3FF;
+  --elmo-secondary-dim: #0099B8;
+  --elmo-on-secondary: #000000;
+  
+  /* Tertiary Colors (Steam Dark) */
+  --elmo-tertiary: #1B2838;
+  --elmo-on-tertiary: #FFFFFF;
+  
+  /* Background Colors */
+  --elmo-background: #0A0E14;
+  --elmo-on-background: #FFFFFF;
+  
+  /* Surface Colors */
+  --elmo-surface: #1A1F29;
+  --elmo-surface-variant: #2A3142;
+  --elmo-surface-dialog: #353D52;
+  --elmo-on-surface: #FFFFFF;
+  --elmo-on-surface-variant: #B8C1CC;
+  
+  /* Semantic Colors */
+  --elmo-error: #FF4444;
+  --elmo-on-error: #FFFFFF;
+  --elmo-success: #00FF88;
+  --elmo-on-success: #000000;
+  --elmo-warning: #FFA500;
+  --elmo-on-warning: #000000;
+  
+  /* Utility Colors */
+  --elmo-outline: #7A8599;
+  --elmo-outline-variant: #4A5568;
+  --elmo-scrim: rgba(0, 0, 0, 0.8);
+  
+  /* CS2 Rarity Colors */
+  --elmo-rarity-consumer: #B0C3D9;
+  --elmo-rarity-industrial: #5E98D9;
+  --elmo-rarity-milspec: #4B69FF;
+  --elmo-rarity-restricted: #8847FF;
+  --elmo-rarity-classified: #D32CE6;
+  --elmo-rarity-covert: #EB4B4B;
+  --elmo-rarity-gold: #FFD700;
+  
+  /* Typography Classes */
+  --elmo-typography-display-small: 2.25rem;           /* 36px */
+  --elmo-typography-display-medium: 2.75rem;          /* 44px */
+  --elmo-typography-display-large: 3.5rem;            /* 56px */
+  
+  --elmo-typography-headline-small: 1.5rem;           /* 24px */
+  --elmo-typography-headline-medium: 1.75rem;         /* 28px */
+  --elmo-typography-headline-large: 2rem;             /* 32px */
+  
+  --elmo-typography-title-small: 1.125rem;            /* 18px */
+  --elmo-typography-title-medium: 1.25rem;            /* 20px */
+  --elmo-typography-title-large: 1.375rem;            /* 22px */
+  
+  --elmo-typography-label-small: 0.875rem;            /* 14px */
+  --elmo-typography-label-medium: 1rem;               /* 16px */
+  --elmo-typography-label-large: 1.125rem;            /* 18px */
+  
+  --elmo-typography-body-small: 0.875rem;             /* 14px */
+  --elmo-typography-body-medium: 1rem;                /* 16px */
+  --elmo-typography-body-large: 1.125rem;             /* 18px */
+  
+  /* Legacy support - map old variables to Elmo */
+  --cs-orange: var(--elmo-primary);
+  --cs-orange-bright: var(--elmo-primary-bright);
+  --cs-orange-dark: var(--elmo-primary-dim);
+  --electric-blue: var(--elmo-secondary);
+  --electric-blue-dim: var(--elmo-secondary-dim);
+  --bg-deepest: var(--elmo-background);
+  --bg-deep: var(--elmo-background);
+  --bg-base: var(--elmo-surface);
+  --bg-elevated: var(--elmo-surface-variant);
+  --bg-overlay: var(--elmo-surface-dialog);
+  --text-primary: var(--elmo-on-surface);
+  --text-secondary: var(--elmo-on-surface-variant);
+  --text-tertiary: var(--elmo-outline);
+  --success: var(--elmo-success);
+  --warning: var(--elmo-warning);
+  --danger: var(--elmo-error);
+  --rarity-consumer: var(--elmo-rarity-consumer);
+  --rarity-industrial: var(--elmo-rarity-industrial);
+  --rarity-milspec: var(--elmo-rarity-milspec);
+  --rarity-restricted: var(--elmo-rarity-restricted);
+  --rarity-classified: var(--elmo-rarity-classified);
+  --rarity-covert: var(--elmo-rarity-covert);
+  --rarity-gold: var(--elmo-rarity-gold);
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  
+  body {
+    @apply bg-[var(--bg-deep)] text-[var(--text-primary)];
+    font-family: 'Exo 2', sans-serif;
+    font-weight: 400;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+  }
+  
+  h1 {
+    font-size: 4rem;
+    line-height: 1.1;
+  }
+  
+  h2 {
+    font-size: 3rem;
+    line-height: 1.2;
+  }
+  
+  h3 {
+    font-size: 2rem;
+    line-height: 1.3;
+  }
+  
+  h4 {
+    font-size: 1.5rem;
+    line-height: 1.4;
+  }
+  
+  p {
+    font-size: 1rem;
+    line-height: 1.6;
+  }
+  
+  code, .mono {
+    font-family: 'JetBrains Mono', monospace;
+  }
+}
+
+@layer utilities {
+  /* Elmo Typography Classes */
+  .elmo-display-small {
+    font-size: var(--elmo-typography-display-small);
+    line-height: 1.2;
+    font-weight: 300;
+  }
+  .elmo-display-small-emphasized {
+    font-size: var(--elmo-typography-display-small);
+    line-height: 1.2;
+    font-weight: 700;
+  }
+  .elmo-display-medium {
+    font-size: var(--elmo-typography-display-medium);
+    line-height: 1.2;
+    font-weight: 300;
+  }
+  .elmo-display-medium-emphasized {
+    font-size: var(--elmo-typography-display-medium);
+    line-height: 1.2;
+    font-weight: 700;
+  }
+  .elmo-display-large {
+    font-size: var(--elmo-typography-display-large);
+    line-height: 1.2;
+    font-weight: 300;
+  }
+  .elmo-display-large-emphasized {
+    font-size: var(--elmo-typography-display-large);
+    line-height: 1.2;
+    font-weight: 700;
+  }
+  
+  .elmo-headline-small {
+    font-size: var(--elmo-typography-headline-small);
+    line-height: 1.3;
+    font-weight: 400;
+  }
+  .elmo-headline-small-emphasized {
+    font-size: var(--elmo-typography-headline-small);
+    line-height: 1.3;
+    font-weight: 700;
+  }
+  .elmo-headline-medium {
+    font-size: var(--elmo-typography-headline-medium);
+    line-height: 1.3;
+    font-weight: 400;
+  }
+  .elmo-headline-medium-emphasized {
+    font-size: var(--elmo-typography-headline-medium);
+    line-height: 1.3;
+    font-weight: 700;
+  }
+  .elmo-headline-large {
+    font-size: var(--elmo-typography-headline-large);
+    line-height: 1.3;
+    font-weight: 400;
+  }
+  .elmo-headline-large-emphasized {
+    font-size: var(--elmo-typography-headline-large);
+    line-height: 1.3;
+    font-weight: 700;
+  }
+  
+  .elmo-title-small {
+    font-size: var(--elmo-typography-title-small);
+    line-height: 1.4;
+    font-weight: 400;
+  }
+  .elmo-title-small-emphasized {
+    font-size: var(--elmo-typography-title-small);
+    line-height: 1.4;
+    font-weight: 600;
+  }
+  .elmo-title-medium {
+    font-size: var(--elmo-typography-title-medium);
+    line-height: 1.4;
+    font-weight: 400;
+  }
+  .elmo-title-medium-emphasized {
+    font-size: var(--elmo-typography-title-medium);
+    line-height: 1.4;
+    font-weight: 600;
+  }
+  .elmo-title-large {
+    font-size: var(--elmo-typography-title-large);
+    line-height: 1.4;
+    font-weight: 400;
+  }
+  .elmo-title-large-emphasized {
+    font-size: var(--elmo-typography-title-large);
+    line-height: 1.4;
+    font-weight: 600;
+  }
+  
+  .elmo-label-small {
+    font-size: var(--elmo-typography-label-small);
+    line-height: 1.5;
+    font-weight: 400;
+  }
+  .elmo-label-small-emphasized {
+    font-size: var(--elmo-typography-label-small);
+    line-height: 1.5;
+    font-weight: 600;
+  }
+  .elmo-label-medium {
+    font-size: var(--elmo-typography-label-medium);
+    line-height: 1.5;
+    font-weight: 400;
+  }
+  .elmo-label-medium-emphasized {
+    font-size: var(--elmo-typography-label-medium);
+    line-height: 1.5;
+    font-weight: 600;
+  }
+  .elmo-label-large {
+    font-size: var(--elmo-typography-label-large);
+    line-height: 1.5;
+    font-weight: 400;
+  }
+  .elmo-label-large-emphasized {
+    font-size: var(--elmo-typography-label-large);
+    line-height: 1.5;
+    font-weight: 600;
+  }
+  
+  .elmo-body-small {
+    font-size: var(--elmo-typography-body-small);
+    line-height: 1.6;
+    font-weight: 400;
+  }
+  .elmo-body-small-emphasized {
+    font-size: var(--elmo-typography-body-small);
+    line-height: 1.6;
+    font-weight: 600;
+  }
+  .elmo-body-medium {
+    font-size: var(--elmo-typography-body-medium);
+    line-height: 1.6;
+    font-weight: 400;
+  }
+  .elmo-body-medium-emphasized {
+    font-size: var(--elmo-typography-body-medium);
+    line-height: 1.6;
+    font-weight: 600;
+  }
+  .elmo-body-large {
+    font-size: var(--elmo-typography-body-large);
+    line-height: 1.6;
+    font-weight: 400;
+  }
+  .elmo-body-large-emphasized {
+    font-size: var(--elmo-typography-body-large);
+    line-height: 1.6;
+    font-weight: 600;
+  }
+
+  /* Elmo Gradient Text Utilities */
+  .text-gradient-orange {
+    background: linear-gradient(135deg, var(--elmo-primary-bright) 0%, var(--elmo-primary) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  
+  .text-gradient-blue {
+    background: linear-gradient(135deg, var(--elmo-secondary) 0%, var(--elmo-secondary-dim) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  
+  /* Elmo Glow Effects */
+  .glow-orange {
+    box-shadow: 0 0 20px rgba(255, 106, 0, 0.3), 0 0 40px rgba(255, 106, 0, 0.1);
+  }
+  
+  .glow-blue {
+    box-shadow: 0 0 20px rgba(0, 217, 255, 0.3), 0 0 40px rgba(0, 217, 255, 0.1);
+  }
+  
+  /* Elmo Animations */
+  .animate-fade-in {
+    animation: fadeIn 0.6s ease-out forwards;
+  }
+  
+  .animate-slide-up {
+    animation: slideUp 0.6s ease-out forwards;
+  }
+  
+  .animate-scale-in {
+    animation: scaleIn 0.5s ease-out forwards;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Custom scrollbar styles */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: var(--bg-elevated);
+  border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--bg-overlay);
+  border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--cs-orange);
+}
