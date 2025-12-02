@@ -22,17 +22,22 @@ export interface InventoryItem {
   rarity?: string;
 }
 
-// Session management
+// Session management - DEPRECATED: Now using Supabase Auth sessions
+// Keeping these for backward compatibility during migration, but they're no longer used
+// TODO: Remove after confirming no components use them
 export function getSessionId(): string | null {
-  return localStorage.getItem('steam_session_id');
+  // Deprecated - Supabase Auth handles sessions now
+  return null;
 }
 
-export function setSessionId(sessionId: string): void {
-  localStorage.setItem('steam_session_id', sessionId);
+export function setSessionId(_sessionId: string): void {
+  // Deprecated - Supabase Auth handles sessions now
+  // No-op
 }
 
 export function clearSessionId(): void {
-  localStorage.removeItem('steam_session_id');
+  // Deprecated - Supabase Auth handles sessions now
+  // No-op
 }
 
 // User caching
@@ -55,11 +60,15 @@ export function clearCachedUser(): void {
   localStorage.removeItem('steam_user');
 }
 
-// Test inventory access (diagnostic tool)
+// Test inventory access (diagnostic tool) - DISABLED (inventory endpoint disabled)
 export async function testInventoryAccess(): Promise<any> {
+  throw new Error('Inventory access is disabled. Steam blocks cloud IPs. Use manual item entry instead.');
+  
+  /* Old implementation (disabled):
   try {
-    const sessionId = getSessionId();
-    if (!sessionId) {
+    const { getAccessToken } = await import('./supabaseClient');
+    const accessToken = await getAccessToken();
+    if (!accessToken) {
       throw new Error('No session found. Please log in first.');
     }
 
@@ -67,8 +76,7 @@ export async function testInventoryAccess(): Promise<any> {
     
     const response = await fetch(`${SERVER_URL}/steam/inventory/test`, {
       headers: {
-        'Authorization': `Bearer ${publicAnonKey}`,
-        'X-Session-ID': sessionId,
+        'Authorization': `Bearer ${accessToken}`,
       },
     });
 
@@ -84,6 +92,7 @@ export async function testInventoryAccess(): Promise<any> {
     console.error('🔍 Diagnostic test failed:', error);
     throw error;
   }
+  */
 }
 
 // Initiate Steam login
@@ -151,6 +160,8 @@ export async function processSteamCallback(queryParams: URLSearchParams): Promis
     if (!response.ok) {
       const errorText = await response.text();
       console.error('processSteamCallback: Error response:', errorText);
+      console.error('processSteamCallback: Response status:', response.status);
+      console.error('processSteamCallback: Response headers:', Object.fromEntries(response.headers.entries()));
       
       let error;
       try {
@@ -159,19 +170,53 @@ export async function processSteamCallback(queryParams: URLSearchParams): Promis
         error = { error: errorText };
       }
       
-      throw new Error(error.error || 'Authentication failed');
+      // Include more details in error message - prioritize message field
+      const errorMessage = error.message || error.error || error.details || errorText || 'Authentication failed';
+      console.error('processSteamCallback: Parsed error:', error);
+      console.error('processSteamCallback: Error message:', errorMessage);
+      console.error('processSteamCallback: Full error object:', JSON.stringify(error, null, 2));
+      
+      const fullError = new Error(`${errorMessage} (Status: ${response.status})`);
+      (fullError as any).status = response.status;
+      (fullError as any).details = error;
+      throw fullError;
     }
 
     const data = await response.json();
     
     console.log('processSteamCallback: Response data:', data);
     
-    if (!data.success || !data.sessionId || !data.user) {
-      throw new Error('Invalid response from server');
+    // Validate response structure
+    if (!data.success) {
+      throw new Error(data.error || 'Authentication failed');
+    }
+    
+    if (!data.session || !data.session.access_token || !data.session.refresh_token) {
+      console.error('processSteamCallback: Invalid session data:', data);
+      throw new Error('Invalid response from server: missing session tokens');
+    }
+    
+    if (!data.user) {
+      console.error('processSteamCallback: Missing user data:', data);
+      throw new Error('Invalid response from server: missing user data');
     }
 
-    // Store session
-    setSessionId(data.sessionId);
+    // Set Supabase Auth session using the tokens from backend
+    console.log('processSteamCallback: Setting Supabase Auth session...');
+    const { supabase } = await import('./supabaseClient');
+    const { error: sessionError } = await supabase.auth.setSession({
+      access_token: data.session.access_token,
+      refresh_token: data.session.refresh_token,
+    });
+
+    if (sessionError) {
+      console.error('processSteamCallback: Error setting session:', sessionError);
+      throw new Error('Failed to set authentication session');
+    }
+
+    console.log('processSteamCallback: Supabase Auth session set successfully');
+
+    // Cache user info (for backward compatibility)
     setCachedUser(data.user);
 
     console.log('processSteamCallback: Success, user:', data.user.personaName);
@@ -183,89 +228,111 @@ export async function processSteamCallback(queryParams: URLSearchParams): Promis
   }
 }
 
-// Get current user
-export async function getCurrentUser(): Promise<SteamUser | null> {
-  const sessionId = getSessionId();
-  console.log('getCurrentUser: Session ID:', sessionId ? 'exists' : 'none');
-  
-  if (!sessionId) {
-    console.log('getCurrentUser: No session ID, returning null');
-    return null;
-  }
+// User cache to prevent excessive REST requests
+let userCache: { user: SteamUser; expires: number } | null = null;
+const USER_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
+// Get current user (using Supabase Auth)
+export async function getCurrentUser(forceRefresh = false): Promise<SteamUser | null> {
   try {
+    // Check cache first (unless forcing refresh)
+    if (!forceRefresh && userCache && userCache.expires > Date.now()) {
+      console.log('getCurrentUser: Returning cached user (saved REST request)');
+      return userCache.user;
+    }
+
+    // Check Supabase Auth session first
+    const { supabase, getAccessToken } = await import('./supabaseClient');
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    
+    if (sessionError || !session) {
+      console.log('getCurrentUser: No Supabase Auth session');
+      userCache = null; // Clear cache if no session
+      return null;
+    }
+
+    const accessToken = await getAccessToken();
+    if (!accessToken) {
+      console.log('getCurrentUser: No access token');
+      userCache = null; // Clear cache if no token
+      return null;
+    }
+
+    // Fetch user from backend API (which has trade URL from database)
     console.log('getCurrentUser: Fetching user from server...');
     const response = await fetch(`${SERVER_URL}/steam/user`, {
       headers: {
-        'Authorization': `Bearer ${publicAnonKey}`,
-        'X-Session-ID': sessionId,
+        'Authorization': `Bearer ${accessToken}`,
       },
     });
 
-    console.log('getCurrentUser: Response status:', response.status);
-
     if (!response.ok) {
-      // Session invalid or expired
-      console.log('getCurrentUser: Session invalid, clearing');
-      clearSessionId();
+      console.log('getCurrentUser: Session invalid, signing out');
+      userCache = null; // Clear cache on error
+      await supabase.auth.signOut();
       return null;
     }
 
     const data = await response.json();
-    console.log('getCurrentUser: Response data:', data);
-    
     if (data.user) {
+      // Cache user data to reduce REST requests
+      userCache = {
+        user: data.user,
+        expires: Date.now() + USER_CACHE_DURATION
+      };
       setCachedUser(data.user);
-      console.log('getCurrentUser: User found:', data.user.personaName);
+      console.log('getCurrentUser: User found and cached:', data.user.personaName);
       return data.user;
     }
 
-    console.log('getCurrentUser: No user in response');
+    userCache = null;
     return null;
   } catch (error) {
     console.error('Error fetching current user:', error);
-    clearSessionId();
+    userCache = null; // Clear cache on error
     return null;
   }
 }
 
-// Logout
-export async function logout(): Promise<void> {
-  const sessionId = getSessionId();
-  
-  if (sessionId) {
-    try {
-      await fetch(`${SERVER_URL}/steam/logout`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${publicAnonKey}`,
-          'X-Session-ID': sessionId,
-        },
-      });
-    } catch (error) {
-      console.error('Error during logout:', error);
-    }
-  }
+// Clear user cache (call when user logs out or updates profile)
+export function clearUserCache(): void {
+  userCache = null;
+  clearCachedUser(); // Also clear localStorage cache
+}
 
-  clearSessionId();
+// Logout (using Supabase Auth)
+export async function logout(): Promise<void> {
+  try {
+    const { supabase } = await import('./supabaseClient');
+    await supabase.auth.signOut();
+    clearUserCache(); // Clear both cache and localStorage
+  } catch (error) {
+    console.error('Error during logout:', error);
+    throw error;
+  }
 }
 
 // Get user inventory - BACKEND PROXY
 export async function getUserInventory(): Promise<InventoryItem[]> {
-  const sessionId = getSessionId();
   const cachedUser = getCachedUser();
   
-  if (!sessionId || !cachedUser) {
+  if (!cachedUser) {
     throw new Error('Not authenticated');
   }
 
   try {
+    const { getAccessToken } = await import('./supabaseClient');
+    const accessToken = await getAccessToken();
+    
+    if (!accessToken) {
+      throw new Error('Not authenticated');
+    }
+
     console.log('🎮 Fetching inventory via backend...');
 
     const response = await fetch(`${SERVER_URL}/steam/inventory`, {
       headers: {
-        'Authorization': `Bearer ${publicAnonKey}`,
-        'X-Session-ID': sessionId,
+        'Authorization': `Bearer ${accessToken}`,
       },
     });
 
@@ -372,18 +439,18 @@ function extractRarity(description: any): string {
 
 // Update user's trade URL
 export async function updateTradeUrl(tradeUrl: string): Promise<void> {
-  const sessionId = getSessionId();
-  
-  if (!sessionId) {
-    throw new Error('Not authenticated');
-  }
-
   try {
+    const { getAccessToken } = await import('./supabaseClient');
+    const accessToken = await getAccessToken();
+    
+    if (!accessToken) {
+      throw new Error('Not authenticated');
+    }
+
     const response = await fetch(`${SERVER_URL}/steam/profile`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${publicAnonKey}`,
-        'X-Session-ID': sessionId,
+        'Authorization': `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ tradeUrl }),
