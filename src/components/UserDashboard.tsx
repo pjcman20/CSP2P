@@ -3,7 +3,7 @@ import { Button } from './ui/button';
 import type { Page } from '../App';
 import { useState, useEffect } from 'react';
 import { projectId, publicAnonKey } from '../utils/supabase/info';
-import { getSessionId } from '../utils/steamAuth';
+import { getAccessToken } from '../utils/supabaseClient';
 import type { TradeOffer } from './types';
 import { subscribeToUserOffers } from '../utils/realtimeSubscription';
 import { toast } from 'sonner@2.0.3';
@@ -31,21 +31,27 @@ export function UserDashboard({ onNavigate, steamUser }: UserDashboardProps) {
       setLoading(true);
       setError(null);
       
-      const sessionId = getSessionId();
-      if (!sessionId) {
-        setError('Not authenticated');
+      // Use Supabase Auth token instead of session ID
+      const accessToken = await getAccessToken();
+      if (!accessToken) {
+        setError('Not authenticated. Please sign in.');
+        setLoading(false);
         return;
       }
 
       const response = await fetch(`${SERVER_URL}/offers/user/mine`, {
         headers: {
-          'Authorization': `Bearer ${publicAnonKey}`,
-          'X-Session-ID': sessionId,
+          'Authorization': `Bearer ${accessToken}`,
         },
       });
 
       if (!response.ok) {
-        throw new Error('Failed to fetch offers');
+        if (response.status === 401) {
+          setError('Not authenticated. Please sign in.');
+        } else {
+          throw new Error('Failed to fetch offers');
+        }
+        return;
       }
 
       const data = await response.json();
@@ -65,18 +71,29 @@ export function UserDashboard({ onNavigate, steamUser }: UserDashboardProps) {
 
     try {
       setDeleting(offerId);
-      const sessionId = getSessionId();
+      
+      // Use Supabase Auth token instead of session ID
+      const accessToken = await getAccessToken();
+      if (!accessToken) {
+        toast.error('Not authenticated. Please sign in.');
+        setDeleting(null);
+        return;
+      }
       
       const response = await fetch(`${SERVER_URL}/offers/${offerId}`, {
         method: 'DELETE',
         headers: {
-          'Authorization': `Bearer ${publicAnonKey}`,
-          'X-Session-ID': sessionId!,
+          'Authorization': `Bearer ${accessToken}`,
         },
       });
 
       if (!response.ok) {
-        throw new Error('Failed to delete offer');
+        if (response.status === 401) {
+          toast.error('Not authenticated. Please sign in.');
+        } else {
+          throw new Error('Failed to delete offer');
+        }
+        return;
       }
 
       // Remove from local state
@@ -84,7 +101,7 @@ export function UserDashboard({ onNavigate, steamUser }: UserDashboardProps) {
       toast.success('Offer deleted successfully');
     } catch (err) {
       console.error('Error deleting offer:', err);
-      alert('Failed to delete offer. Please try again.');
+      toast.error('Failed to delete offer. Please try again.');
     } finally {
       setDeleting(null);
     }
