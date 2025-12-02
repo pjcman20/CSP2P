@@ -100,8 +100,15 @@ export function MarketplaceFeed({ isAuthenticated, steamUser, onNavigate, onSign
   //   return () => unsubscribe();
   // }, []);
 
-  // Subscribe to offers polling
+  // Subscribe to offers polling (optimized: only poll when tab is visible)
   useEffect(() => {
+    // Don't poll if tab is hidden (saves REST requests)
+    if (document.hidden) {
+      console.log('⏸️ Tab hidden, skipping polling setup');
+      return;
+    }
+    
+    // Use 30-second interval (reduced from 3s to prevent REST request spam)
     const unsubscribe = subscribeToOffersPolling((newOffer) => {
       setOffers((prevOffers) => {
         // Check if offer already exists (prevent duplicates)
@@ -114,9 +121,22 @@ export function MarketplaceFeed({ isAuthenticated, steamUser, onNavigate, onSign
         toast.success('New offer added!');
         return [newOffer, ...prevOffers];
       });
-    });
+    }, 30000); // 30 seconds instead of default 3 seconds
 
-    return () => unsubscribe();
+    // Stop polling when tab becomes hidden
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        console.log('⏸️ Tab hidden, stopping polling');
+        unsubscribe();
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      unsubscribe();
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, []);
 
   return (

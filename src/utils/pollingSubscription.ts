@@ -9,7 +9,7 @@ type NewOfferCallback = (newOffer: TradeOffer) => void;
  */
 export function subscribeToOffersPolling(
   onNewOffer: NewOfferCallback,
-  intervalMs: number = 3000 // Poll every 3 seconds
+  intervalMs: number = 30000 // Poll every 30 seconds (reduced from 3s to prevent REST request spam)
 ) {
   console.log('🔄 Setting up polling subscription for offers (every', intervalMs, 'ms)...');
   
