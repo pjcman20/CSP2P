@@ -81,3 +81,10 @@ coverage/
 # Temporary folders
 tmp/
 temp/
+
+# Supabase local development
+supabase/.branches
+supabase/.temp
+supabase/volumes/
+supabase/*.dump
+supabase/*.sql.backup

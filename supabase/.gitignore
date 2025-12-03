@@ -1,0 +1,12 @@
+# Supabase local development files
+.branches
+.temp
+volumes/
+
+# Local database dumps
+*.dump
+*.sql.backup
+
+# Environment files (already in root .gitignore, but here for clarity)
+.env.local
+.env.*.local

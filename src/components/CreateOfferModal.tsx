@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { X, Plus, Trash2, Loader2, AlertCircle, RefreshCw, Info, Package } from 'lucide-react';
-import { getSessionId, getCachedUser } from '../utils/steamAuth';
+import { X, Plus, Loader2 } from 'lucide-react';
+import { getCachedUser } from '../utils/steamAuth';
 import { ManualItemEntry } from './ManualItemEntry';
-import { InventorySelector } from './InventorySelector';
 import { Button } from './ui/button';
 import { Textarea } from './ui/textarea';
 import type { TradeOffer, TradeItem } from './types';
@@ -29,8 +28,6 @@ export function CreateOfferModal({ onClose, onCreateOffer }: CreateOfferModalPro
   const [step, setStep] = useState<'offering' | 'seeking' | 'review'>('offering');
   const [isCreating, setIsCreating] = useState(false);
   const [editingOfferId, setEditingOfferId] = useState<string | null>(null);
-  const [showInventorySelector, setShowInventorySelector] = useState(false);
-  const [inventorySelectorMode, setInventorySelectorMode] = useState<'offering' | 'seeking'>('offering');
 
   // Check if we're editing an existing offer
   useEffect(() => {
@@ -97,94 +94,76 @@ export function CreateOfferModal({ onClose, onCreateOffer }: CreateOfferModalPro
     }
   };
 
-  const handleInventorySelect = (items: TradeItem[]) => {
-    if (inventorySelectorMode === 'offering') {
-      setSelectedOffering([...selectedOffering, ...items]);
-    } else {
-      setSelectedSeeking([...selectedSeeking, ...items]);
-    }
-    setShowInventorySelector(false);
-  };
-
-  const openInventorySelector = (mode: 'offering' | 'seeking') => {
-    setInventorySelectorMode(mode);
-    setShowInventorySelector(true);
-  };
 
   // Get current user
   const currentUser = getCachedUser();
 
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
-      <div className="bg-[var(--bg-base)] border border-[var(--bg-elevated)] rounded-xl max-w-6xl w-full max-h-[90vh] overflow-hidden animate-scale-in">
-        {/* Header */}
-        <div className="border-b border-[var(--bg-elevated)] p-6 flex items-center justify-between">
-          <h2 className="text-3xl">
+      <div className="bg-gradient-to-br from-[var(--bg-base)] to-[var(--bg-deep)] border border-[var(--bg-elevated)] rounded-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden animate-scale-in shadow-2xl">
+        {/* Header - Futuristic Design */}
+        <div className="border-b border-[var(--bg-elevated)] bg-gradient-to-r from-[var(--bg-elevated)]/50 to-transparent p-6 flex items-center justify-between">
+          <h2 className="text-3xl font-bold">
             {editingOfferId ? 'Edit' : 'Create'} <span className="text-gradient-orange">Trade Offer</span>
           </h2>
-          <Button onClick={onClose} variant="ghost" size="sm">
+          <Button 
+            onClick={onClose} 
+            variant="ghost" 
+            size="sm"
+            className="hover:bg-[var(--bg-elevated)] rounded-lg"
+          >
             <X className="w-5 h-5" />
           </Button>
         </div>
 
-        {/* Steps */}
-        <div className="border-b border-[var(--bg-elevated)] px-6 py-4 flex gap-4">
-          <StepButton
-            active={step === 'offering'}
-            completed={selectedOffering.length > 0}
-            onClick={() => setStep('offering')}
-            label="1. What You're Offering"
-          />
-          <StepButton
-            active={step === 'seeking'}
-            completed={selectedSeeking.length > 0}
-            onClick={() => setStep('seeking')}
-            label="2. What You Want"
-          />
-          <StepButton
-            active={step === 'review'}
-            completed={false}
-            onClick={() => setStep('review')}
-            label="3. Review & Publish"
-          />
+        {/* Steps - Futuristic Progress Indicator */}
+        <div className="border-b border-[var(--bg-elevated)] bg-[var(--bg-elevated)]/30 px-6 py-4">
+          <div className="flex items-center gap-4">
+            <StepButton
+              active={step === 'offering'}
+              completed={selectedOffering.length > 0}
+              onClick={() => setStep('offering')}
+              label="1. What You're Offering"
+              stepNumber={1}
+            />
+            <div className="flex-1 h-0.5 bg-[var(--bg-overlay)]">
+              <div className={`h-full transition-all duration-300 ${
+                step !== 'offering' ? 'bg-gradient-to-r from-[var(--cs-orange)] to-[var(--electric-blue)]' : ''
+              }`} style={{ width: step === 'offering' ? '0%' : '100%' }} />
+            </div>
+            <StepButton
+              active={step === 'seeking'}
+              completed={selectedSeeking.length > 0}
+              onClick={() => setStep('seeking')}
+              label="2. What You Want"
+              stepNumber={2}
+            />
+            <div className="flex-1 h-0.5 bg-[var(--bg-overlay)]">
+              <div className={`h-full transition-all duration-300 ${
+                step === 'review' ? 'bg-gradient-to-r from-[var(--cs-orange)] to-[var(--electric-blue)]' : ''
+              }`} style={{ width: step === 'review' ? '100%' : '0%' }} />
+            </div>
+            <StepButton
+              active={step === 'review'}
+              completed={false}
+              onClick={() => setStep('review')}
+              label="3. Review & Publish"
+              stepNumber={3}
+            />
+          </div>
         </div>
 
         {/* Content */}
         <div className="p-6 overflow-y-auto max-h-[calc(90vh-250px)]">
           {step === 'offering' && (
-            <div>
-              <h3 className="text-xl mb-4 text-[var(--text-secondary)]">
-                What are you offering? ({selectedOffering.length} selected)
-              </h3>
-              
-              {/* Import from Steam Button */}
-              {currentUser && (
-                <Button
-                  onClick={() => openInventorySelector('offering')}
-                  className="mb-6 bg-gradient-to-r from-[var(--electric-blue)] to-[#4c9eff] hover:from-[#00c4e6] hover:to-[var(--electric-blue)] text-white"
-                >
-                  <Package className="w-4 h-4 mr-2" />
-                  Import from Steam Inventory
-                </Button>
-              )}
-              
-              {/* Info Banner about Steam Auto-Fetch */}
-              <div className="mb-6 p-4 bg-[#1a2332] border border-[var(--electric-blue)]/30 rounded-lg">
-                <div className="flex items-start gap-3">
-                  <Info className="w-5 h-5 text-[var(--electric-blue)] flex-shrink-0 mt-0.5" />
-                  <div>
-                    <p className="text-sm text-white mb-2">
-                      <strong>🎮 Steam Inventory Import Available!</strong>
-                    </p>
-                    <p className="text-xs text-gray-300 mb-2">
-                      Click "Import from Steam Inventory" to browse your CS2 items and select what you want to trade.
-                      Your inventory must be set to Public in Steam Privacy Settings.
-                    </p>
-                    <p className="text-xs text-[var(--electric-blue)]">
-                      💡 Or manually add items from the popular items selector below!
-                    </p>
-                  </div>
-                </div>
+            <div className="space-y-6">
+              <div>
+                <h3 className="text-2xl font-bold mb-2 text-[var(--text-primary)]">
+                  What are you offering?
+                </h3>
+                <p className="text-sm text-[var(--text-secondary)]">
+                  Add items you want to trade. Include wear condition for skins.
+                </p>
               </div>
               
               <ManualItemEntry
@@ -197,10 +176,15 @@ export function CreateOfferModal({ onClose, onCreateOffer }: CreateOfferModalPro
           )}
 
           {step === 'seeking' && (
-            <div>
-              <h3 className="text-xl mb-4 text-[var(--text-secondary)]">
-                What do you want in return? ({selectedSeeking.length} selected)
-              </h3>
+            <div className="space-y-6">
+              <div>
+                <h3 className="text-2xl font-bold mb-2 text-[var(--text-primary)]">
+                  What do you want in return?
+                </h3>
+                <p className="text-sm text-[var(--text-secondary)]">
+                  Add items you're looking for. Include wear condition for skins.
+                </p>
+              </div>
               
               <ManualItemEntry
                 items={selectedSeeking}
@@ -212,55 +196,97 @@ export function CreateOfferModal({ onClose, onCreateOffer }: CreateOfferModalPro
           )}
 
           {step === 'review' && (
-            <div>
-              <h3 className="text-xl mb-6 text-[var(--text-secondary)]">Review Your Offer</h3>
+            <div className="space-y-6">
+              <div>
+                <h3 className="text-2xl font-bold mb-2 text-[var(--text-primary)]">Review Your Offer</h3>
+                <p className="text-sm text-[var(--text-secondary)]">Double-check everything before publishing</p>
+              </div>
               
-              <div className="grid md:grid-cols-2 gap-6 mb-6">
-                <div>
-                  <h4 className="text-lg mb-3 text-[var(--cs-orange)]">You're Offering</h4>
-                  <div className="grid grid-cols-2 gap-3">
-                    {selectedOffering.map(item => (
-                      <div key={item.id} className="bg-[var(--bg-elevated)] p-3 rounded-lg">
-                        <img src={item.image} alt={item.name} className="w-full h-24 object-contain mb-2" />
-                        <p className="text-sm truncate">{item.name}</p>
-                        <p className="text-xs text-[var(--text-tertiary)]">{item.wear}</p>
-                      </div>
-                    ))}
+              <div className="grid md:grid-cols-2 gap-6">
+                <div className="bg-gradient-to-br from-[var(--bg-elevated)] to-[var(--bg-base)] border border-[var(--bg-overlay)] rounded-xl p-6">
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[var(--cs-orange)] to-[var(--cs-orange-bright)] flex items-center justify-center">
+                      <span className="text-white text-sm font-bold">→</span>
+                    </div>
+                    <h4 className="text-lg font-bold text-[var(--cs-orange)]">You're Offering</h4>
+                  </div>
+                  <div className="space-y-3">
+                    {selectedOffering.length > 0 ? (
+                      selectedOffering.map(item => (
+                        <div key={item.id} className="bg-[var(--bg-deep)] border border-[var(--bg-overlay)] rounded-lg p-3 flex items-center gap-3">
+                          {item.image && (
+                            <div className="w-12 h-12 rounded-lg overflow-hidden bg-[var(--bg-elevated)] flex-shrink-0">
+                              <img src={item.image} alt={item.name} className="w-full h-12 object-contain" />
+                            </div>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-[var(--text-primary)] truncate">{item.name}</p>
+                            {item.wear && (
+                              <p className="text-xs text-[var(--text-secondary)] mt-0.5">{item.wear}</p>
+                            )}
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-sm text-[var(--text-tertiary)] text-center py-4">No items</p>
+                    )}
                   </div>
                 </div>
 
-                <div>
-                  <h4 className="text-lg mb-3 text-[var(--electric-blue)]">You're Seeking</h4>
-                  <div className="grid grid-cols-2 gap-3">
-                    {selectedSeeking.map(item => (
-                      <div key={item.id} className="bg-[var(--bg-elevated)] p-3 rounded-lg">
-                        {item.isPlaceholder && item.category ? (
-                          <>
-                            <img src={PLACEHOLDER_OPTIONS.find(p => p.category === item.category)?.image} alt={item.name} className="w-full h-24 object-cover rounded mb-2" />
-                            <p className="text-sm text-[var(--electric-blue)]">{item.name}</p>
-                          </>
-                        ) : (
-                          <>
-                            <img src={item.image} alt={item.name} className="w-full h-24 object-contain mb-2" />
-                            <p className="text-sm truncate">{item.name}</p>
-                            <p className="text-xs text-[var(--text-tertiary)]">{item.wear}</p>
-                          </>
-                        )}
-                      </div>
-                    ))}
+                <div className="bg-gradient-to-br from-[var(--bg-elevated)] to-[var(--bg-base)] border border-[var(--bg-overlay)] rounded-xl p-6">
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[var(--electric-blue)] to-cyan-400 flex items-center justify-center">
+                      <span className="text-white text-sm font-bold">←</span>
+                    </div>
+                    <h4 className="text-lg font-bold text-[var(--electric-blue)]">You're Seeking</h4>
+                  </div>
+                  <div className="space-y-3">
+                    {selectedSeeking.length > 0 ? (
+                      selectedSeeking.map(item => (
+                        <div key={item.id} className="bg-[var(--bg-deep)] border border-[var(--bg-overlay)] rounded-lg p-3 flex items-center gap-3">
+                          {item.isPlaceholder && item.category ? (
+                            <>
+                              <div className="w-12 h-12 rounded-lg overflow-hidden bg-[var(--bg-elevated)] flex-shrink-0">
+                                <img src={PLACEHOLDER_OPTIONS.find(p => p.category === item.category)?.image} alt={item.name} className="w-full h-12 object-cover" />
+                              </div>
+                              <div className="flex-1">
+                                <p className="text-sm font-medium text-[var(--electric-blue)]">{item.name}</p>
+                                <p className="text-xs text-[var(--text-tertiary)] mt-0.5">Placeholder</p>
+                              </div>
+                            </>
+                          ) : (
+                            <>
+                              {item.image && (
+                                <div className="w-12 h-12 rounded-lg overflow-hidden bg-[var(--bg-elevated)] flex-shrink-0">
+                                  <img src={item.image} alt={item.name} className="w-full h-12 object-contain" />
+                                </div>
+                              )}
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-[var(--text-primary)] truncate">{item.name}</p>
+                                {item.wear && (
+                                  <p className="text-xs text-[var(--text-secondary)] mt-0.5">{item.wear}</p>
+                                )}
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-sm text-[var(--text-tertiary)] text-center py-4">No items</p>
+                    )}
                   </div>
                 </div>
               </div>
 
-              <div>
-                <label className="text-sm text-[var(--text-secondary)] mb-2 block">
+              <div className="bg-gradient-to-br from-[var(--bg-elevated)] to-[var(--bg-base)] border border-[var(--bg-overlay)] rounded-xl p-6">
+                <label className="text-sm font-medium text-[var(--text-primary)] mb-3 block">
                   Additional Notes (Optional)
                 </label>
                 <Textarea
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   placeholder="Add any conditions, preferences, or notes about your trade..."
-                  className="bg-[var(--bg-elevated)] border-[var(--bg-overlay)] text-[var(--text-primary)] min-h-[100px]"
+                  className="bg-[var(--bg-deep)] border-[var(--bg-overlay)] text-[var(--text-primary)] min-h-[100px] focus:border-[var(--electric-blue)] focus:ring-2 focus:ring-[var(--electric-blue)]/20"
                 />
               </div>
             </div>
@@ -317,32 +343,28 @@ export function CreateOfferModal({ onClose, onCreateOffer }: CreateOfferModalPro
         </div>
       </div>
 
-      {/* Inventory Selector Modal */}
-      {showInventorySelector && currentUser && (
-        <InventorySelector
-          onClose={() => setShowInventorySelector(false)}
-          onSelectItems={handleInventorySelect}
-          steamId={currentUser.steamId}
-          title={inventorySelectorMode === 'offering' ? 'Select Items to Offer' : 'Select Items You Want'}
-        />
-      )}
     </div>
   );
 }
 
-function StepButton({ active, completed, onClick, label }: { active: boolean; completed: boolean; onClick: () => void; label: string }) {
+function StepButton({ active, completed, onClick, label, stepNumber }: { active: boolean; completed: boolean; onClick: () => void; label: string; stepNumber: number }) {
   return (
     <button
       onClick={onClick}
-      className={`px-4 py-2 rounded-lg transition-all ${
+      className={`relative px-6 py-3 rounded-xl transition-all duration-300 flex items-center gap-3 ${
         active
-          ? 'bg-[var(--cs-orange)] text-white'
+          ? 'bg-gradient-to-r from-[var(--cs-orange)] to-[var(--cs-orange-bright)] text-white shadow-lg shadow-[var(--cs-orange)]/30'
           : completed
-          ? 'bg-[var(--bg-elevated)] text-[var(--text-primary)] border border-[var(--electric-blue)]'
-          : 'bg-[var(--bg-elevated)] text-[var(--text-tertiary)]'
+          ? 'bg-[var(--bg-elevated)] text-[var(--text-primary)] border-2 border-[var(--electric-blue)]'
+          : 'bg-[var(--bg-elevated)] text-[var(--text-tertiary)] border-2 border-transparent hover:border-[var(--bg-overlay)]'
       }`}
     >
-      {label}
+      <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm ${
+        active ? 'bg-white/20 text-white' : completed ? 'bg-[var(--electric-blue)] text-white' : 'bg-[var(--bg-deep)] text-[var(--text-tertiary)]'
+      }`}>
+        {completed && !active ? '✓' : stepNumber}
+      </div>
+      <span className="font-medium">{label}</span>
     </button>
   );
 }

@@ -1,14 +1,14 @@
 import { projectId, publicAnonKey } from './supabase/info';
-import { getSessionId } from './steamAuth';
+import { getAccessToken } from './supabaseClient';
 import type { TradeOffer } from '../components/types';
 
 const SERVER_URL = `https://${projectId}.supabase.co/functions/v1/make-server-e2cf3727`;
 
 // Create a new offer
 export async function createOffer(offering: any[], seeking: any[], notes?: string): Promise<TradeOffer> {
-  const sessionId = getSessionId();
+  const accessToken = await getAccessToken();
   
-  if (!sessionId) {
+  if (!accessToken) {
     throw new Error('Not authenticated');
   }
 
@@ -29,8 +29,7 @@ export async function createOffer(offering: any[], seeking: any[], notes?: strin
     const response = await fetch(`${SERVER_URL}/offers/create`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${publicAnonKey}`,
-        'X-Session-ID': sessionId,
+        'Authorization': `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ offering, seeking, notes }),
@@ -51,9 +50,9 @@ export async function createOffer(offering: any[], seeking: any[], notes?: strin
 
 // Update an existing offer
 export async function updateOffer(offerId: string, offering: any[], seeking: any[], notes?: string): Promise<TradeOffer> {
-  const sessionId = getSessionId();
+  const accessToken = await getAccessToken();
   
-  if (!sessionId) {
+  if (!accessToken) {
     throw new Error('Not authenticated');
   }
 
@@ -61,8 +60,7 @@ export async function updateOffer(offerId: string, offering: any[], seeking: any
     const response = await fetch(`${SERVER_URL}/offers/${offerId}`, {
       method: 'PUT',
       headers: {
-        'Authorization': `Bearer ${publicAnonKey}`,
-        'X-Session-ID': sessionId,
+        'Authorization': `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ offering, seeking, notes }),
@@ -125,17 +123,16 @@ export async function getOfferById(offerId: string): Promise<TradeOffer | null> 
 
 // Get user's own offers
 export async function getMyOffers(): Promise<TradeOffer[]> {
-  const sessionId = getSessionId();
+  const accessToken = await getAccessToken();
   
-  if (!sessionId) {
+  if (!accessToken) {
     throw new Error('Not authenticated');
   }
 
   try {
     const response = await fetch(`${SERVER_URL}/offers/user/mine`, {
       headers: {
-        'Authorization': `Bearer ${publicAnonKey}`,
-        'X-Session-ID': sessionId,
+        'Authorization': `Bearer ${accessToken}`,
       },
     });
 
@@ -154,9 +151,9 @@ export async function getMyOffers(): Promise<TradeOffer[]> {
 
 // Delete an offer
 export async function deleteOffer(offerId: string): Promise<void> {
-  const sessionId = getSessionId();
+  const accessToken = await getAccessToken();
   
-  if (!sessionId) {
+  if (!accessToken) {
     throw new Error('Not authenticated');
   }
 
@@ -164,8 +161,7 @@ export async function deleteOffer(offerId: string): Promise<void> {
     const response = await fetch(`${SERVER_URL}/offers/${offerId}`, {
       method: 'DELETE',
       headers: {
-        'Authorization': `Bearer ${publicAnonKey}`,
-        'X-Session-ID': sessionId,
+        'Authorization': `Bearer ${accessToken}`,
       },
     });
 
@@ -181,9 +177,9 @@ export async function deleteOffer(offerId: string): Promise<void> {
 
 // Send trade request
 export async function sendTradeRequest(offerId: string, message?: string): Promise<any> {
-  const sessionId = getSessionId();
+  const accessToken = await getAccessToken();
   
-  if (!sessionId) {
+  if (!accessToken) {
     throw new Error('Not authenticated');
   }
 
@@ -191,8 +187,7 @@ export async function sendTradeRequest(offerId: string, message?: string): Promi
     const response = await fetch(`${SERVER_URL}/offers/${offerId}/request`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${publicAnonKey}`,
-        'X-Session-ID': sessionId,
+        'Authorization': `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ message }),
@@ -213,17 +208,16 @@ export async function sendTradeRequest(offerId: string, message?: string): Promi
 
 // Get trade requests received
 export async function getTradeRequests(): Promise<any[]> {
-  const sessionId = getSessionId();
+  const accessToken = await getAccessToken();
   
-  if (!sessionId) {
+  if (!accessToken) {
     throw new Error('Not authenticated');
   }
 
   try {
     const response = await fetch(`${SERVER_URL}/requests/received`, {
       headers: {
-        'Authorization': `Bearer ${publicAnonKey}`,
-        'X-Session-ID': sessionId,
+        'Authorization': `Bearer ${accessToken}`,
       },
     });
 

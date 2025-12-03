@@ -54,6 +54,8 @@ interface SteamMarketResponse {
   success: boolean;
   results?: SteamMarketItem[];
   total_count?: number;
+  start?: number;
+  pagesize?: number;
 }
 
 function convertSteamItemsToTradeItems(steamItems: SteamMarketItem[]): TradeItem[] {
@@ -76,13 +78,42 @@ function convertSteamItemsToTradeItems(steamItems: SteamMarketItem[]): TradeItem
         }
       }
 
+      // Format image URL properly - ensure it has the size suffix if missing
+      let imageUrl: string | undefined = undefined;
+      if (item.asset_description?.icon_url) {
+        const iconUrl = item.asset_description.icon_url.trim();
+        
+        if (!iconUrl) {
+          imageUrl = undefined;
+        } else if (iconUrl.startsWith('http')) {
+          // Already a full URL - use as-is but try to ensure size suffix
+          if (!iconUrl.includes('/62fx62f') && !iconUrl.includes('/360fx360f') && !iconUrl.includes('/128fx128f')) {
+            // Try adding size suffix if URL doesn't have one
+            imageUrl = iconUrl.endsWith('/') ? `${iconUrl}62fx62f` : `${iconUrl}/62fx62f`;
+          } else {
+            imageUrl = iconUrl;
+          }
+        } else {
+          // Relative URL or hash - prepend CDN base
+          // Try both CDN domains for better reliability
+          const cleanUrl = iconUrl.startsWith('/') ? iconUrl.slice(1) : iconUrl;
+          
+          // Check if it already has size suffix
+          if (cleanUrl.includes('/62fx62f') || cleanUrl.includes('/360fx360f') || cleanUrl.includes('/128fx128f')) {
+            // Has suffix, use cloudflare CDN
+            imageUrl = `https://community.cloudflare.steamstatic.com/economy/image/${cleanUrl}`;
+          } else {
+            // No suffix, add it - try akamai CDN first (more reliable)
+            imageUrl = `https://community.akamai.steamstatic.com/economy/image/${cleanUrl}/62fx62f`;
+          }
+        }
+      }
+
       return {
         id: `steam_${item.hash_name.replace(/\s/g, '_')}_${Date.now()}_${index}`,
         name: item.hash_name,
         wear: getWearFromName(item.hash_name),
-        image: item.asset_description?.icon_url 
-          ? `https://community.cloudflare.steamstatic.com/economy/image/${item.asset_description.icon_url}`
-          : undefined,
+        image: imageUrl,
         rarity: mapRarity(item.asset_description?.type || ''),
         float: undefined,
         price: price
@@ -90,63 +121,87 @@ function convertSteamItemsToTradeItems(steamItems: SteamMarketItem[]): TradeItem
     });
 }
 
-// Direct search of Steam Market API
-export async function searchSteamItems(query: string, count: number = 100): Promise<TradeItem[]> {
+// Direct search of Steam Market API with pagination support
+export async function searchSteamItems(query: string, count: number = 10000): Promise<TradeItem[]> {
   if (!query || query.trim() === '') {
     return [];
   }
 
-  // Check cache first
-  const cacheKey = `${query}_${count}`;
+  // Check cache first - use 'all' key for unlimited results
+  const cacheKey = `${query}_all`;
   const cached = itemCache.get(cacheKey);
   if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
-    return cached.data;
+    return cached.data.slice(0, count);
   }
 
   try {
-    const params = new URLSearchParams({
-      query: query,
-      start: '0',
-      count: count.toString(),
-      search_descriptions: '0',
-      sort_column: 'popular',
-      sort_dir: 'desc',
-      appid: '730',
-      norender: '1'
-    });
+    const allItems: TradeItem[] = [];
+    const pageSize = 100; // Steam Market API max per request
+    let start = 0;
+    let hasMore = true;
+    let totalCount = 0;
 
-    const steamUrl = `https://steamcommunity.com/market/search/render/?${params.toString()}`;
-    
-    // Try direct fetch first (may work in some environments)
-    let response;
-    try {
-      response = await fetch(steamUrl);
-    } catch (corsError) {
-      // If CORS blocks it, use proxy
-      const corsProxy = 'https://corsproxy.io/?';
-      const proxyUrl = corsProxy + encodeURIComponent(steamUrl);
-      response = await fetch(proxyUrl);
-    }
-    
-    if (!response.ok) {
-      throw new Error(`API error: ${response.status}`);
-    }
-
-    const data: SteamMarketResponse = await response.json();
-
-    if (data.success && data.results && data.results.length > 0) {
-      const items = convertSteamItemsToTradeItems(data.results);
-      
-      // Cache the results
-      itemCache.set(cacheKey, {
-        data: items,
-        timestamp: Date.now()
+    // Fetch pages until we have enough items or no more available
+    while (hasMore && allItems.length < count) {
+      const params = new URLSearchParams({
+        query: query,
+        start: start.toString(),
+        count: pageSize.toString(),
+        search_descriptions: '0',
+        sort_column: 'popular',
+        sort_dir: 'desc',
+        appid: '730',
+        norender: '1'
       });
 
-      return items;
+      const steamUrl = `https://steamcommunity.com/market/search/render/?${params.toString()}`;
+      
+      // Try direct fetch first (may work in some environments)
+      let response;
+      try {
+        response = await fetch(steamUrl);
+      } catch (corsError) {
+        // If CORS blocks it, use proxy
+        const corsProxy = 'https://corsproxy.io/?';
+        const proxyUrl = corsProxy + encodeURIComponent(steamUrl);
+        response = await fetch(proxyUrl);
+      }
+      
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`);
+      }
+
+      const data: SteamMarketResponse = await response.json();
+
+      if (data.success && data.results && data.results.length > 0) {
+        const items = convertSteamItemsToTradeItems(data.results);
+        allItems.push(...items);
+        
+        // Update total count from API response if available
+        if (data.total_count !== undefined) {
+          totalCount = data.total_count;
+        }
+
+        // Check if we have more pages
+        hasMore = items.length === pageSize && allItems.length < (totalCount || count);
+        start += pageSize;
+
+        // Small delay between requests to avoid rate limiting
+        if (hasMore && allItems.length < count) {
+          await delay(200);
+        }
+      } else {
+        hasMore = false;
+      }
     }
 
-    return [];
+    // Cache all results
+    itemCache.set(cacheKey, {
+      data: allItems,
+      timestamp: Date.now()
+    });
+
+    return allItems.slice(0, count);
   } catch (error) {
     console.error('Error fetching Steam items:', error);
     throw new Error('Unable to fetch items. Please try again.');

@@ -1,5 +1,5 @@
-import { projectId, publicAnonKey } from './supabase/info';
-import { getSessionId } from './steamAuth';
+import { projectId } from './supabase/info';
+import { getAccessToken } from './supabaseClient';
 
 const API_BASE_URL = `https://${projectId}.supabase.co/functions/v1/make-server-e2cf3727`;
 
@@ -18,9 +18,9 @@ export async function submitReputationVote(
   targetSteamId: string,
   voteType: 'completed' | 'reversed'
 ): Promise<{ success: boolean; reputation: ReputationData }> {
-  const sessionId = getSessionId();
+  const accessToken = await getAccessToken();
   
-  if (!sessionId) {
+  if (!accessToken) {
     throw new Error('Not authenticated');
   }
 
@@ -28,8 +28,7 @@ export async function submitReputationVote(
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${publicAnonKey}`,
-      'X-Session-ID': sessionId,
+      'Authorization': `Bearer ${accessToken}`,
     },
     body: JSON.stringify({ targetSteamId, voteType }),
   });
@@ -46,15 +45,13 @@ export async function submitReputationVote(
  * Get reputation data for a specific trader
  */
 export async function getReputation(steamId: string): Promise<ReputationData> {
-  const sessionId = getSessionId();
+  const accessToken = await getAccessToken();
   
-  const headers: Record<string, string> = {
-    'Authorization': `Bearer ${publicAnonKey}`,
-  };
+  const headers: Record<string, string> = {};
 
-  // Include session if available to check user's vote
-  if (sessionId) {
-    headers['X-Session-ID'] = sessionId;
+  // Include token if available to check user's vote
+  if (accessToken) {
+    headers['Authorization'] = `Bearer ${accessToken}`;
   }
 
   const response = await fetch(`${API_BASE_URL}/reputation/${steamId}`, {
