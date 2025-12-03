@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Search, Filter, Plus, User, LogOut, LayoutDashboard, Loader2, Settings, AlertCircle } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Search, Filter, Plus, User, LogOut, LayoutDashboard, Loader2, Settings, AlertCircle, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { OfferCard } from './OfferCard';
@@ -22,8 +22,11 @@ interface MarketplaceFeedProps {
   onSignIn: () => void;
 }
 
+type SortOrder = 'newest' | 'oldest';
+
 export function MarketplaceFeed({ isAuthenticated, steamUser, onNavigate, onSignOut, onSignIn }: MarketplaceFeedProps) {
   const [searchQuery, setSearchQuery] = useState('');
+  const [sortOrder, setSortOrder] = useState<SortOrder>('newest');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showTradeUrlModal, setShowTradeUrlModal] = useState(false);
   const [selectedOffer, setSelectedOffer] = useState<TradeOffer | null>(null);
@@ -139,6 +142,43 @@ export function MarketplaceFeed({ isAuthenticated, steamUser, onNavigate, onSign
     };
   }, []);
 
+  // Filter and sort offers
+  const filteredAndSortedOffers = React.useMemo(() => {
+    let filtered = [...offers];
+
+    // Filter by search query (complete word matching)
+    if (searchQuery.trim()) {
+      const queryWords = searchQuery.trim().toLowerCase().split(/\s+/);
+      
+      filtered = filtered.filter(offer => {
+        // Check both offering and seeking items
+        const allItemNames = [
+          ...offer.offering.map(item => item.name.toLowerCase()),
+          ...offer.seeking.map(item => item.name.toLowerCase())
+        ].join(' ');
+
+        // Check if any query word matches a complete word in item names
+        return queryWords.some(queryWord => {
+          // Create word boundary regex for complete word matching
+          const wordRegex = new RegExp(`\\b${queryWord.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
+          return wordRegex.test(allItemNames);
+        });
+      });
+
+      // When filtering, prioritize most recent offers
+      filtered.sort((a, b) => b.timestamp - a.timestamp);
+    }
+
+    // Apply sorting
+    if (sortOrder === 'newest') {
+      filtered.sort((a, b) => b.timestamp - a.timestamp);
+    } else if (sortOrder === 'oldest') {
+      filtered.sort((a, b) => a.timestamp - b.timestamp);
+    }
+
+    return filtered;
+  }, [offers, searchQuery, sortOrder]);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-[var(--bg-deep)] via-[var(--bg-base)] to-[var(--bg-deep)]">
       {/* Header */}
@@ -219,30 +259,63 @@ export function MarketplaceFeed({ isAuthenticated, steamUser, onNavigate, onSign
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--text-tertiary)]" />
               <Input
                 type="text"
-                placeholder="Search offers by item name..."
+                placeholder="Search by item name (e.g., AK-47, Knife, Case Hardened)..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 bg-[var(--bg-elevated)] border-[var(--bg-overlay)] text-[var(--text-primary)]"
+                className="pl-10 bg-[var(--bg-elevated)] border-[var(--bg-overlay)] text-[var(--text-primary)] focus:border-[var(--electric-blue)]"
               />
             </div>
             
-            <Button
-              variant="outline"
-              className="border-[var(--bg-overlay)] hover:border-[var(--cs-orange)]"
-            >
-              <Filter className="w-4 h-4 mr-2" />
-              Filters
-            </Button>
+            {/* Sort Dropdown */}
+            <div className="flex items-center gap-2">
+              <label className="text-sm text-[var(--text-secondary)] whitespace-nowrap">Sort:</label>
+              <div className="relative">
+                <select
+                  value={sortOrder}
+                  onChange={(e) => setSortOrder(e.target.value as SortOrder)}
+                  className="appearance-none bg-[var(--bg-elevated)] border border-[var(--bg-overlay)] rounded-lg px-4 py-2 pr-8 text-[var(--text-primary)] text-sm focus:outline-none focus:border-[var(--electric-blue)] cursor-pointer hover:border-[var(--bg-overlay)] transition-colors"
+                >
+                  <option value="newest">Newest First</option>
+                  <option value="oldest">Oldest First</option>
+                </select>
+                <ArrowUpDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-tertiary)] pointer-events-none" />
+              </div>
+            </div>
           </div>
+          
+          {/* Search Results Count */}
+          {searchQuery.trim() && (
+            <div className="mt-3 text-sm text-[var(--text-secondary)]">
+              Found {filteredAndSortedOffers.length} {filteredAndSortedOffers.length === 1 ? 'offer' : 'offers'} matching "{searchQuery}"
+            </div>
+          )}
         </div>
       </div>
 
       {/* Marketplace Feed */}
       <div className="container mx-auto px-6 py-8">
-        <div className="mb-6">
+        <div className="mb-6 flex items-center justify-between">
           <h3 className="text-2xl text-[var(--text-secondary)]">
-            Recent Offers <span className="text-[var(--cs-orange)] mono">{offers.length}</span>
+            {searchQuery.trim() ? 'Search Results' : 'Recent Offers'}{' '}
+            <span className="text-[var(--cs-orange)] mono">
+              {filteredAndSortedOffers.length}
+            </span>
           </h3>
+          {!searchQuery.trim() && (
+            <div className="flex items-center gap-2 text-sm text-[var(--text-tertiary)]">
+              {sortOrder === 'newest' ? (
+                <>
+                  <ArrowDown className="w-4 h-4" />
+                  <span>Newest First</span>
+                </>
+              ) : (
+                <>
+                  <ArrowUp className="w-4 h-4" />
+                  <span>Oldest First</span>
+                </>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="grid gap-6">
@@ -251,25 +324,41 @@ export function MarketplaceFeed({ isAuthenticated, steamUser, onNavigate, onSign
               <Loader2 className="w-10 h-10 animate-spin text-[var(--text-tertiary)]" />
               <p className="text-2xl text-[var(--text-tertiary)] mt-4">Loading offers...</p>
             </div>
-          ) : (
-            offers.map((offer, index) => (
+          ) : filteredAndSortedOffers.length > 0 ? (
+            filteredAndSortedOffers.map((offer, index) => (
               <div
                 key={offer.id}
                 className="animate-slide-up"
-                style={{ animationDelay: `${index * 0.1}s` }}
+                style={{ animationDelay: `${index * 0.05}s` }}
               >
                 <OfferCard offer={offer} onViewDetails={setSelectedOffer} isAuthenticated={isAuthenticated} />
               </div>
             ))
+          ) : (
+            <div className="text-center py-20">
+              {searchQuery.trim() ? (
+                <>
+                  <p className="text-2xl text-[var(--text-tertiary)] mb-4">No offers found</p>
+                  <p className="text-[var(--text-secondary)] mb-4">
+                    No offers match "{searchQuery}"
+                  </p>
+                  <Button
+                    onClick={() => setSearchQuery('')}
+                    variant="outline"
+                    className="border-[var(--electric-blue)] text-[var(--electric-blue)] hover:bg-[var(--electric-blue)] hover:text-white"
+                  >
+                    Clear Search
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <p className="text-2xl text-[var(--text-tertiary)] mb-4">No offers yet</p>
+                  <p className="text-[var(--text-secondary)]">Be the first to create a trade offer!</p>
+                </>
+              )}
+            </div>
           )}
         </div>
-
-        {offers.length === 0 && !isLoading && (
-          <div className="text-center py-20">
-            <p className="text-2xl text-[var(--text-tertiary)] mb-4">No offers yet</p>
-            <p className="text-[var(--text-secondary)]">Be the first to create a trade offer!</p>
-          </div>
-        )}
       </div>
 
       {/* Create Offer Modal */}

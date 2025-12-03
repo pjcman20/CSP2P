@@ -7,6 +7,7 @@ import { getAccessToken } from '../utils/supabaseClient';
 import type { TradeOffer } from './types';
 import { subscribeToUserOffers } from '../utils/realtimeSubscription';
 import { toast } from 'sonner@2.0.3';
+import { DeleteOfferDialog } from './DeleteOfferDialog';
 
 const SERVER_URL = `https://${projectId}.supabase.co/functions/v1/make-server-e2cf3727`;
 
@@ -21,6 +22,8 @@ export function UserDashboard({ onNavigate, steamUser }: UserDashboardProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [offerToDelete, setOfferToDelete] = useState<TradeOffer | null>(null);
 
   useEffect(() => {
     fetchMyOffers();
@@ -64,23 +67,28 @@ export function UserDashboard({ onNavigate, steamUser }: UserDashboardProps) {
     }
   };
 
-  const handleDelete = async (offerId: string) => {
-    if (!confirm('Are you sure you want to delete this offer? This action cannot be undone.')) {
-      return;
-    }
+  const handleDeleteClick = (offer: TradeOffer) => {
+    setOfferToDelete(offer);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!offerToDelete) return;
 
     try {
-      setDeleting(offerId);
+      setDeleting(offerToDelete.id);
       
       // Use Supabase Auth token instead of session ID
       const accessToken = await getAccessToken();
       if (!accessToken) {
         toast.error('Not authenticated. Please sign in.');
         setDeleting(null);
+        setDeleteDialogOpen(false);
+        setOfferToDelete(null);
         return;
       }
       
-      const response = await fetch(`${SERVER_URL}/offers/${offerId}`, {
+      const response = await fetch(`${SERVER_URL}/offers/${offerToDelete.id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${accessToken}`,
@@ -97,14 +105,21 @@ export function UserDashboard({ onNavigate, steamUser }: UserDashboardProps) {
       }
 
       // Remove from local state
-      setOffers(offers.filter(o => o.id !== offerId));
+      setOffers(offers.filter(o => o.id !== offerToDelete.id));
       toast.success('Offer deleted successfully');
+      setDeleteDialogOpen(false);
+      setOfferToDelete(null);
     } catch (err) {
       console.error('Error deleting offer:', err);
       toast.error('Failed to delete offer. Please try again.');
     } finally {
       setDeleting(null);
     }
+  };
+
+  const handleDeleteCancel = () => {
+    setDeleteDialogOpen(false);
+    setOfferToDelete(null);
   };
 
   const handleEdit = (offer: TradeOffer) => {
@@ -239,7 +254,7 @@ export function UserDashboard({ onNavigate, steamUser }: UserDashboardProps) {
                         size="sm"
                         variant="outline"
                         className="border-[var(--danger)] text-[var(--danger)] hover:bg-[var(--danger)] hover:text-white"
-                        onClick={() => handleDelete(offer.id)}
+                        onClick={() => handleDeleteClick(offer)}
                         disabled={deleting === offer.id}
                         title="Delete offer"
                       >
@@ -257,6 +272,15 @@ export function UserDashboard({ onNavigate, steamUser }: UserDashboardProps) {
           )}
         </div>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <DeleteOfferDialog
+        isOpen={deleteDialogOpen}
+        onClose={handleDeleteCancel}
+        onConfirm={handleDeleteConfirm}
+        offerName={offerToDelete ? `${offerToDelete.offering.map(i => i.name).join(', ')} → ${offerToDelete.seeking.map(i => i.name).join(', ')}` : undefined}
+        isLoading={deleting !== null}
+      />
     </div>
   );
 }

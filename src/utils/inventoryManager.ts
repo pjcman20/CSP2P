@@ -17,8 +17,9 @@
  * - Clear error messages + manual entry fallback
  */
 
-import { getCachedUser, getSessionId } from './steamAuth';
-import { projectId, publicAnonKey } from './supabase/info';
+import { getCachedUser } from './steamAuth';
+import { projectId } from './supabase/info';
+import { getAccessToken } from './supabaseClient';
 
 export interface InventoryItem {
   assetid: string;
@@ -63,15 +64,24 @@ function extractRarity(description: any): string {
 
 /**
  * Fetch inventory via backend proxy
- * This is the ONLY reliable method due to CORS restrictions
+ * NOTE: This endpoint is currently DISABLED (Steam blocks cloud IPs)
+ * Use manual item entry instead - see ManualItemEntry component
  */
-async function fetchInventoryViaBackend(sessionId: string): Promise<InventoryItem[]> {
+async function fetchInventoryViaBackend(): Promise<InventoryItem[]> {
+  throw new Error('Inventory fetching is disabled. Steam blocks cloud IPs. Please use manual item entry.');
+  
+  // Old implementation (disabled):
+  /*
   console.log('🎮 Fetching inventory via backend proxy...');
+  
+  const accessToken = await getAccessToken();
+  if (!accessToken) {
+    throw new Error('Not authenticated');
+  }
   
   const response = await fetch(`${SERVER_URL}/steam/inventory`, {
     headers: {
-      'Authorization': `Bearer ${publicAnonKey}`,
-      'X-Session-ID': sessionId,
+      'Authorization': `Bearer ${accessToken}`,
     },
   });
 
@@ -179,10 +189,16 @@ function processInventoryData(data: any): InventoryItem[] {
  * 5. Provide clear error messages
  */
 export async function fetchUserInventory(): Promise<InventoryItem[]> {
-  const cachedUser = getCachedUser();
-  const sessionId = getSessionId();
+  // NOTE: Inventory fetching is DISABLED - Steam blocks cloud IPs
+  // Use manual item entry instead
+  throw new Error('Inventory fetching is disabled. Steam blocks cloud IPs. Please use manual item entry.');
   
-  if (!cachedUser?.steamId || !sessionId) {
+  // Old implementation (disabled):
+  /*
+  const cachedUser = getCachedUser();
+  const accessToken = await getAccessToken();
+  
+  if (!cachedUser?.steamId || !accessToken) {
     throw new Error('Not authenticated with Steam');
   }
 
@@ -213,7 +229,8 @@ export async function fetchUserInventory(): Promise<InventoryItem[]> {
   
   try {
     // Step 3: Fetch via backend (only reliable method)
-    const items = await fetchInventoryViaBackend(sessionId);
+    // NOTE: This is disabled - Steam blocks cloud IPs
+    const items = await fetchInventoryViaBackend();
     
     // Step 4: Cache successful result
     inventoryCache = {

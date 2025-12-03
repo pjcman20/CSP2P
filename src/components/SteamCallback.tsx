@@ -45,10 +45,31 @@ export default function SteamCallback({ onComplete }: SteamCallbackProps) {
         onComplete();
       } catch (err) {
         console.error('=== STEAM CALLBACK: ERROR ===', err);
-        setError(err instanceof Error ? err.message : 'Authentication failed');
+        let errorMessage = 'Authentication failed';
+        
+        if (err instanceof Error) {
+          errorMessage = err.message;
+          // Include status code if available
+          if ((err as any).status) {
+            errorMessage += ` (Status: ${(err as any).status})`;
+          }
+          // Include details if available
+          if ((err as any).details) {
+            console.error('Error details:', (err as any).details);
+            // Try to extract message from details
+            if ((err as any).details.message) {
+              errorMessage = (err as any).details.message;
+            } else if ((err as any).details.error) {
+              errorMessage = (err as any).details.error;
+            }
+          }
+        }
+        
+        console.error('Final error message:', errorMessage);
+        setError(errorMessage);
         
         // Redirect to home after showing error
-        setTimeout(onComplete, 3000);
+        setTimeout(onComplete, 5000); // Give more time to read error
       }
     };
 
